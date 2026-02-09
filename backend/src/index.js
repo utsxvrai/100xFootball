@@ -1,6 +1,8 @@
 const express = require("express");
 const dotenv = require('dotenv');
+const cron = require('node-cron');
 const apiRoutes = require('./routes');
+const { checkAndResetBoard } = require('./services/resetService');
 
 dotenv.config();
 
@@ -9,10 +11,19 @@ const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 
+// Schedule Global Reset every day at midnight UTC
+cron.schedule('0 0 * * *', () => {
+    console.log('Running scheduled 24h reset...');
+    checkAndResetBoard(true); // Force reset
+}, {
+    scheduled: true,
+    timezone: "UTC"
+});
+
 app.use('/api', apiRoutes);
 
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+    res.status(200).json({ status: 'OK' });
 });
 
 app.listen(PORT, () => {

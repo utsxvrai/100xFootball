@@ -12,18 +12,30 @@
   .backface-hidden {
     backface-visibility: hidden;
   }
+  .rotate-y-0 {
+    transform: rotateY(0deg);
+  }
   .rotate-y-180 {
     transform: rotateY(180deg);
   }
 }
 
 :root {
-  background-color: #0d1117;
-  color: #e6edf3;
+  background-color: #000000;
+  color: #f0f0f0;
+}
+
+body, #root {
+  margin: 0;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: #000000;
 }
 
 body {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
@@ -37,17 +49,27 @@ body {
   animation: modal-fade-in 0.2s ease-out forwards;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
   background: #1a1a1a;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #333;
   border-radius: 10px;
+  border: 2px solid #000000;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #444;
+
+::-webkit-scrollbar-thumb:hover {
+  background: #222222;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1a1a1a #000000;
 }
