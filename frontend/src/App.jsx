@@ -227,10 +227,10 @@ function App() {
   // 3. Claim Logic (Conflict-safe)
   const calculateCooldown = (overall) => {
     if (overall >= 90) return 60; // 1 min
-    if (overall >= 80) return 120; // 2 mins
-    if (overall >= 70) return 180; // 3 mins
-    if (overall >= 60) return 240; // 4 mins
-    return 300; // 5 mins
+    if (overall >= 80) return 180; // 2 mins
+    if (overall >= 70) return 300; // 3 mins
+    if (overall >= 60) return 420; // 4 mins
+    return 600; // 5 mins
   };
 
   const handleTileClaim = async (targetTile) => {
