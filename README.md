@@ -26,15 +26,13 @@ The game board consists of 100 tiles, each hiding a top-rated footballer. Manage
 - **Supabase (PostgreSQL)**: Reliable data persistence and real-time database listeners.
 - **Node-cron**: Manages automated board resets and scheduled tasks.
 
-## 📸 Screenshots
+## Screenshots
 
-````carousel
+
 ![Join the Game](./frontend/public/join.png)
-<!-- slide -->
 ![Game Rules](./frontend/public/rules.png)
-<!-- slide -->
 ![Leaderboard](./frontend/public/leaderboard.png)
-````
+
 
 ## 🚀 Getting Started
 
