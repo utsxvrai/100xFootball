@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = ({ lastClaimedInfo, onRulesClick, onLeaderboardClick, username, resetTimer, cooldownTime }) => {
+const Header = ({ lastClaimedInfo, onRulesClick, onLeaderboardClick, username, userColor, resetTimer, cooldownTime }) => {
     return (
         <header className="bg-black/95 backdrop-blur-xl border-b-[1.5px] border-white/20 p-4 flex flex-col md:flex-row items-center justify-between sticky top-0 z-50">
             <div className="flex items-center gap-4 mb-4 md:mb-0">
@@ -49,7 +49,10 @@ const Header = ({ lastClaimedInfo, onRulesClick, onLeaderboardClick, username, r
                         Leaderboard
                     </button>
                     <div className="h-4 w-[1px] bg-white/10 ml-2"></div>
-                    <span className="text-sm font-semibold text-gray-400 ml-2 truncate max-w-[100px]">
+                    <span 
+                      className="text-sm font-semibold ml-2 truncate max-w-[100px] drop-shadow-sm"
+                      style={{ color: userColor || '#9ca3af' }}
+                    >
                         {username || 'Guest'}
                     </span>
                 </div>

@@ -305,6 +305,7 @@ function App() {
     <div className="min-h-screen bg-black text-white font-sans selection:bg-green-500/30">
       <Header 
         username={username}
+        userColor={selectedColor}
         lastClaimedInfo={lastClaimedInfo}
         onRulesClick={() => setShowRules(true)}
         onLeaderboardClick={() => setShowLeaderboard(true)}
