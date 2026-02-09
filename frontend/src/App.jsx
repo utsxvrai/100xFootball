@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import GameGrid from './components/GameGrid';
 import Modal from './components/Modal';
+import JoinModal from './components/JoinModal';
+import RulesModal from './components/RulesModal';
+import LeaderboardModal from './components/LeaderboardModal';
 import { supabase } from './lib/supabase';
 
 function App() {
@@ -224,58 +227,50 @@ function App() {
     }
   };
 
-  // 3. Claim Logic (Conflict-safe)
-  const calculateCooldown = (overall) => {
-    if (overall >= 90) return 60; // 1 min
-    if (overall >= 80) return 180; // 2 mins
-    if (overall >= 70) return 300; // 3 mins
-    if (overall >= 60) return 420; // 4 mins
-    return 600; // 5 mins
-  };
-
   const handleTileClaim = async (targetTile) => {
     if (!isLoggedIn) {
       setShowRules(true);
       return;
     }
 
-    if (cooldownTime > 0) return; // Silent block or show toast
+    if (cooldownTime > 0) return;
     if (targetTile.claimed_by || loadingTileId) return;
 
     setLoadingTileId(targetTile.id);
-    const now = new Date().toISOString();
-
+    
     // Optimistic UI update
     setTiles(prev => prev.map(t => 
-      t.id === targetTile.id ? { ...t, claimed_by: userId, claimed_at: now } : t
+      t.id === targetTile.id ? { ...t, claimed_by: userId, claimed_at: new Date().toISOString() } : t
     ));
 
     try {
-      const { error } = await supabase
-        .from('footballer_tiles')
-        .update({ 
-          claimed_by: userId, 
-          claimed_at: now 
-        })
-        .eq('id', targetTile.id)
-        .is('claimed_by', null); // Conditional update
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/tiles/${targetTile.id}/claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to claim tile');
+      }
       
-      // Set cooldown based on rating
-      const seconds = calculateCooldown(targetTile.overall);
-      const endTime = new Date(Date.now() + seconds * 1000).toISOString();
+      // Update cooldown based on backend response
+      const endTime = new Date(result.cooldown_until).toISOString();
       localStorage.setItem('cooldownEndTime', endTime);
-      setCooldownTime(seconds);
+      const remaining = Math.max(0, Math.floor((new Date(endTime) - new Date()) / 1000));
+      setCooldownTime(remaining);
       
-      // Success will be reinforced by real-time event
     } catch (err) {
       console.error('Claim failed:', err.message);
       // Rollback optimistic update
       setTiles(prev => prev.map(t => 
         t.id === targetTile.id ? { ...t, claimed_by: null, claimed_at: null } : t
       ));
-      alert('Tile already taken or error occurred!');
+      alert(err.message);
     } finally {
       setLoadingTileId(null);
     }
@@ -320,110 +315,29 @@ function App() {
         profiles={profiles}
       />
 
-      {/* Login / Join Modal */}
+      {/* Modals Refactored out of App.jsx */}
       {!isInitializing && !isLoggedIn && (
-        <Modal title="Join the Field" show={true} onClose={() => {}}>
-          <p className="text-gray-400 mb-6 text-sm">Welcome to 100xFootball. Claim tiles, build your squad, and top the leaderboard.</p>
-          <form onSubmit={handleJoin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Username</label>
-              <input 
-                type="text" 
-                value={inputUsername}
-                onChange={(e) => setInputUsername(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-green-500 transition-colors text-white placeholder:text-gray-600"
-                placeholder="Manager Name"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Team Color</label>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {colors.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setSelectedColor(color)}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${selectedColor === color ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-105'}`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-            <button 
-              type="submit"
-              className="w-full text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-[0.98]"
-              style={{ backgroundColor: selectedColor }}
-            >
-              Start Playing
-            </button>
-          </form>
-        </Modal>
+        <JoinModal 
+          show={true}
+          usernameInput={inputUsername}
+          setUsernameInput={setInputUsername}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+          colors={colors}
+          onJoin={handleJoin}
+        />
       )}
 
-      <Modal title="How to Play 100xFootball" show={showRules} onClose={() => setShowRules(false)}>
-        <div className="space-y-6 text-gray-400">
-          <div className="bg-green-500/5 border border-green-500/10 p-4 rounded-lg">
-            <h4 className="text-green-400 font-bold mb-1 flex items-center gap-2">
-              <span className="text-lg">🎯</span> Your Objective
-            </h4>
-            <p className="text-sm">Build the highest-rated squad! Claim tiles to reveal world-class footballers and climb the global leaderboard.</p>
-          </div>
+      <RulesModal 
+        show={showRules} 
+        onClose={() => setShowRules(false)} 
+      />
 
-          <ul className="space-y-4 text-sm">
-            <li className="flex gap-4">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-green-500 font-bold border border-gray-700">1</div>
-              <p><span className="text-white font-medium">Claim Tiles:</span> Click any grey tile to reveal a player. Once claimed, that player is YOURS until the next reset.</p>
-            </li>
-            <li className="flex gap-4">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-green-500 font-bold border border-gray-700">2</div>
-              <p><span className="text-white font-medium">Manage Cooldowns:</span> High-rated players are powerful! The better the player, the longer your cooldown (1-5 minutes) before your next claim.</p>
-            </li>
-            <li className="flex gap-4">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-green-500 font-bold border border-gray-700">3</div>
-              <p><span className="text-white font-medium">Master the Grid:</span> The board is randomized every reset. Memorization won't help—only speed and luck!</p>
-            </li>
-          </ul>
-
-          <div className="pt-4 border-t border-gray-800 flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-xs text-yellow-500 bg-yellow-500/5 p-2 rounded">
-              <span>⏰</span>
-              <span>The field resets every 24 hours (UTC Midnight) or when all 100 tiles are claimed.</span>
-            </div>
-          </div>
-
-          <button 
-            onClick={() => setShowRules(false)}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-all mt-2"
-          >
-            Got it, Let's Play!
-          </button>
-        </div>
-      </Modal>
-
-      {/* Leaderboard Modal */}
-      <Modal title="Global Leaders" show={showLeaderboard} onClose={() => setShowLeaderboard(false)}>
-        <div className="space-y-2">
-          {leaderboard.length > 0 ? (
-            leaderboard.map((user, idx) => (
-              <div key={user.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 transition-all hover:bg-white/10">
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold w-5 ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-orange-400' : 'text-gray-600'}`}>
-                    #{idx + 1}
-                  </span>
-                  <span className="font-medium truncate max-w-[120px] text-gray-200">{user.name}</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-green-400 font-bold text-sm">{user.score} pts</div>
-                  <div className="text-[10px] text-gray-500 uppercase tracking-tighter">{user.tilesCount} tiles</div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-8 text-sm italic">No players joined the field yet...</p>
-          )}
-        </div>
-      </Modal>
+      <LeaderboardModal 
+        show={showLeaderboard} 
+        onClose={() => setShowLeaderboard(false)} 
+        leaderboard={leaderboard}
+      />
     </div>
   );
 }

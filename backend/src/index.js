@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require('cors');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
 const apiRoutes = require('./routes');
@@ -9,6 +10,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.use(cors());
 app.use(express.json());
 
 // Schedule Global Reset every day at midnight UTC
