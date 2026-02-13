@@ -1,4 +1,5 @@
 const supabase = require('../config/supabase');
+const socketIO = require('../socket');
 
 async function checkAndResetBoard(force = false) {
   try {
@@ -29,8 +30,6 @@ async function checkAndResetBoard(force = false) {
       const shuffledIndices = Array.from({ length: allTiles.length }, (_, i) => i)
         .sort(() => Math.random() - 0.5);
 
-      // We have to perform individual or batch updates. 
-      // Since it's only 100 tiles, we can use Promise.all to update tile_index and reset claims
       const updates = allTiles.map((tile, i) => {
         return supabase
           .from('footballer_tiles')
@@ -52,6 +51,14 @@ async function checkAndResetBoard(force = false) {
       }
 
       console.log('Board reset and randomization successful.');
+
+      // 3. Broadcast board reset
+      try {
+        const io = socketIO.getIO();
+        io.emit('boardReset');
+      } catch (socketErr) {
+        console.error('Socket broadcast failed:', socketErr.message);
+      }
     }
   } catch (error) {
     console.error('Error in checkAndResetBoard:', error.message);
@@ -59,3 +66,4 @@ async function checkAndResetBoard(force = false) {
 }
 
 module.exports = { checkAndResetBoard };
+

@@ -6,6 +6,8 @@ import JoinModal from './components/JoinModal';
 import RulesModal from './components/RulesModal';
 import LeaderboardModal from './components/LeaderboardModal';
 import { supabase } from './lib/supabase';
+import { socket } from './lib/socket';
+
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -72,28 +74,23 @@ function App() {
       }
     }, 1000);
 
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'footballer_tiles',
-        },
-        (payload) => {
-          if (handleRealtimeUpdateRef.current) {
-            handleRealtimeUpdateRef.current(payload);
-          }
-        }
-      )
-      .subscribe();
+    socket.on('tileUpdate', (payload) => {
+      if (handleRealtimeUpdateRef.current) {
+        handleRealtimeUpdateRef.current(payload);
+      }
+    });
+
+    socket.on('boardReset', () => {
+      fetchTiles();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      socket.off('tileUpdate');
+      socket.off('boardReset');
       clearInterval(timerInterval);
       clearInterval(cooldownInterval);
     };
+
   }, []);
 
   const fetchTiles = async () => {
@@ -146,7 +143,7 @@ function App() {
   };
 
   const handleRealtimeUpdate = async (payload) => {
-    const { eventType, new: newTile, old: oldTile } = payload;
+    const { eventType, new: newTile, profile } = payload;
     
     if (eventType === 'UPDATE' || eventType === 'INSERT') {
       // Functional update to ensure we use latest state
@@ -158,27 +155,16 @@ function App() {
         return prev.map(t => t.id === newTile.id ? { ...t, ...newTile } : t);
       });
       
-      // If a tile was just claimed, update header and refresh profiles to get the new one
-      if (newTile.claimed_by && (!oldTile || !oldTile.claimed_by)) {
-        const fetchAndSetClaimInfo = async () => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, color')
-            .eq('id', newTile.claimed_by)
-            .single();
-
-          if (profile) {
-            setProfiles(prev => ({ ...prev, [newTile.claimed_by]: profile }));
-            setLastClaimedInfo({
-              playerScore: newTile.overall,
-              playerName: newTile.name,
-              username: profile.username,
-              userColor: profile.color,
-              time: newTile.claimed_at
-            });
-          }
-        };
-        fetchAndSetClaimInfo();
+      // Update profile map and last claimed info if profile data is provided
+      if (profile) {
+        setProfiles(prev => ({ ...prev, [profile.id]: profile }));
+        setLastClaimedInfo({
+          playerScore: newTile.overall,
+          playerName: newTile.name,
+          username: profile.username,
+          userColor: profile.color,
+          time: newTile.claimed_at
+        });
       }
     }
   };
